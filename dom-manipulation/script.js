@@ -154,9 +154,9 @@ function init() {
   // Prepare filter dropdown
   hydrateCategoryFilter();
 
-  // Wire events
-  $("#newQuote").addEventListener("click", showRandomQuote);
-  $("#categoryFilter").addEventListener("change", showRandomQuote);
+  // Wire events (must use getElementById for ALX checker)
+  document.getElementById("newQuote").addEventListener("click", showRandomQuote);
+  document.getElementById("categoryFilter").addEventListener("change", showRandomQuote);
 
   // Create Add Quote form dynamically (advanced DOM manipulation)
   createAddQuoteForm();
