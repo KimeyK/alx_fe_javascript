@@ -22,11 +22,15 @@
 </head>
 <body>
   <h1>Dynamic Quote Generator</h1>
-  <p class="muted">Pick a category (or “All”), show a new quote, and add your own. Quotes persist via Local Storage. Last viewed quote uses Session Storage.</p>
+  <p class="muted">Filter by category, show a new quote, add your own. Filter preference persists via Local Storage; last viewed quote uses Session Storage.</p>
 
   <div class="controls">
     <label for="categoryFilter" class="sr-only">Filter by category</label>
-    <select id="categoryFilter" aria-label="Filter quotes by category"></select>
+    <!-- Per task: inline onchange attribute -->
+    <select id="categoryFilter" onchange="filterQuotes()">
+      <option value="all">All Categories</option>
+      <!-- Dynamically populated categories -->
+    </select>
 
     <button id="newQuote" type="button">Show New Quote</button>
     <span id="count" class="muted" aria-live="polite"></span>
@@ -34,7 +38,6 @@
 
   <div id="quoteDisplay" aria-live="polite"></div>
 
-  <!-- Storage + JSON import/export controls -->
   <div class="storage-controls">
     <button id="exportJson" type="button">Export Quotes (JSON)</button>
     <label for="importFile" class="sr-only">Import Quotes JSON</label>
