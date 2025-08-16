@@ -1,79 +1,173 @@
-// Quote array with text and category
-let quotes = [
-  { text: "Be yourself; everyone else is already taken.", category: "Inspiration" },
-  { text: "Simplicity is the ultimate sophistication.", category: "Wisdom" },
-  { text: "Life is short, live it well.", category: "Life" }
+// ===== Data =====
+const quotes = [
+  { text: "The secret of getting ahead is getting started.", category: "Motivation" },
+  { text: "In the middle of difficulty lies opportunity.", category: "Inspiration" },
+  { text: "Simplicity is the soul of efficiency.", category: "Productivity" },
+  { text: "Code is like humor. When you have to explain it, it’s bad.", category: "Programming" },
+  { text: "First, solve the problem. Then, write the code.", category: "Programming" },
 ];
 
-// Required function: displayRandomQuote
-function displayRandomQuote() {
-  const quoteDisplay = document.getElementById("quoteDisplay");
+// ===== Helpers =====
+const $ = (sel, parent = document) => parent.querySelector(sel);
 
-  if (quotes.length === 0) {
-    quoteDisplay.innerHTML = "No quotes available.";
-    return;
-  }
-
-  const randomIndex = Math.floor(Math.random() * quotes.length);
-  const randomQuote = quotes[randomIndex];
-
-  // ✅ Use innerHTML (checker requirement)
-  quoteDisplay.innerHTML = `"${randomQuote.text}"<br><em>(${randomQuote.category})</em>`;
+function uniqueCategories(list) {
+  return Array.from(new Set(list.map(q => q.category))).sort((a, b) => a.localeCompare(b));
 }
 
-// Required function: createAddQuoteForm
+function updateCount(filtered) {
+  const el = $("#count");
+  el.textContent = `${filtered.length} quote${filtered.length === 1 ? "" : "s"} available`;
+}
+
+function renderQuote(q) {
+  const container = $("#quoteDisplay");
+  container.innerHTML = "";
+  if (!q) {
+    container.innerHTML = `<span class="muted">No quote found for this category.</span>`;
+    return;
+  }
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <div class="quote">“${q.text}”</div>
+    <div class="category-pill" aria-label="Category">${q.category}</div>
+  `;
+  container.appendChild(wrapper);
+}
+
+function getFilteredQuotes() {
+  const filter = $("#categoryFilter").value;
+  if (filter === "__ALL__") return quotes;
+  return quotes.filter(q => q.category === filter);
+}
+
+// ===== Core functions required by task =====
+function showRandomQuote() {
+  const pool = getFilteredQuotes();
+  updateCount(pool);
+  if (pool.length === 0) {
+    renderQuote(null);
+    return;
+  }
+  const idx = Math.floor(Math.random() * pool.length);
+  renderQuote(pool[idx]);
+}
+
 function createAddQuoteForm() {
-  const formContainer = document.createElement("div");
+  const mount = $("#formMount");
+  const form = document.createElement("form");
+  form.setAttribute("aria-labelledby", "addQuoteTitle");
+  form.noValidate = true;
 
-  const quoteInput = document.createElement("input");
-  quoteInput.id = "newQuoteText";
-  quoteInput.type = "text";
-  quoteInput.placeholder = "Enter a new quote";
+  const categories = uniqueCategories(quotes);
 
-  const categoryInput = document.createElement("input");
-  categoryInput.id = "newQuoteCategory";
-  categoryInput.type = "text";
-  categoryInput.placeholder = "Enter quote category";
+  form.innerHTML = `
+    <h2 id="addQuoteTitle">Add a Quote</h2>
+    <div class="row">
+      <div>
+        <label for="newQuoteText">Quote <span class="muted">(required)</span></label>
+        <input id="newQuoteText" type="text" placeholder="Enter a new quote" required />
+      </div>
+      <div>
+        <label for="newQuoteCategory">Category <span class="muted">(required)</span></label>
+        <input id="newQuoteCategory" list="categoryOptions" type="text" placeholder="e.g., Motivation" required />
+        <datalist id="categoryOptions">
+          ${categories.map(c => `<option value="${c}"></option>`).join("")}
+        </datalist>
+      </div>
+    </div>
+    <button id="addQuoteBtn" type="submit">Add Quote</button>
+    <div class="help">Tip: Start typing category to reuse an existing one.</div>
+    <div id="formStatus" role="status" aria-live="polite"></div>
+  `;
 
-  const addButton = document.createElement("button");
-  addButton.textContent = "Add Quote";
-  addButton.onclick = addQuote;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    addQuote();
+  });
 
-  formContainer.appendChild(quoteInput);
-  formContainer.appendChild(categoryInput);
-  formContainer.appendChild(addButton);
-
-  document.body.appendChild(formContainer);
+  mount.replaceChildren(form);
 }
 
-// Required function: addQuote
+// Global for inline compatibility if needed
 function addQuote() {
-  const textInput = document.getElementById("newQuoteText");
-  const categoryInput = document.getElementById("newQuoteCategory");
+  const textEl = $("#newQuoteText");
+  const catEl = $("#newQuoteCategory");
+  const status = $("#formStatus");
 
-  const text = textInput.value.trim();
-  const category = categoryInput.value.trim();
+  const text = textEl.value.trim();
+  const category = catEl.value.trim();
 
-  if (text === "" || category === "") {
-    alert("Both quote and category are required.");
+  // Simple validation
+  if (!text || !category) {
+    status.textContent = "";
+    status.className = "error";
+    status.textContent = "Both quote and category are required.";
     return;
   }
 
-  // Add to quotes array
+  // Update data
   quotes.push({ text, category });
 
-  alert("Quote added successfully!");
+  // Reset form fields
+  textEl.value = "";
+  // Keep category so users can add multiple quotes to same category
 
-  // Clear inputs
-  textInput.value = "";
-  categoryInput.value = "";
+  // Update UI: categories dropdown + datalist + count
+  hydrateCategoryFilter(); // re-populate categories if a new one was introduced
+  // Refresh datalist suggestions
+  const datalist = $("#categoryOptions");
+  datalist.innerHTML = uniqueCategories(quotes).map(c => `<option value="${c}"></option>`).join("");
+
+  status.textContent = "";
+  status.className = "success";
+  status.textContent = "Quote added successfully.";
+
+  // Show the newly added quote if filter matches
+  const currentFilter = $("#categoryFilter").value;
+  if (currentFilter === "__ALL__" || currentFilter === category) {
+    renderQuote({ text, category });
+    updateCount(getFilteredQuotes());
+  }
 }
 
-// ✅ Setup: attach everything on load
-window.onload = function () {
+// ===== UI bootstrapping =====
+function hydrateCategoryFilter() {
+  const select = $("#categoryFilter");
+  const prev = select.value || "__ALL__";
+  const cats = uniqueCategories(quotes);
+
+  // Build options
+  select.innerHTML = [
+    `<option value="__ALL__">All categories</option>`,
+    ...cats.map(c => `<option value="${c}">${c}</option>`)
+  ].join("");
+
+  // Restore previous selection if possible
+  const exists = Array.from(select.options).some(opt => opt.value === prev);
+  select.value = exists ? prev : "__ALL__";
+
+  // Update count to reflect current filter
+  updateCount(getFilteredQuotes());
+}
+
+function init() {
+  // Prepare filter dropdown
+  hydrateCategoryFilter();
+
+  // Wire events
+  $("#newQuote").addEventListener("click", showRandomQuote);
+  $("#categoryFilter").addEventListener("change", showRandomQuote);
+
+  // Create Add Quote form dynamically (advanced DOM manipulation)
   createAddQuoteForm();
 
-  // ✅ Use addEventListener (required by checker)
-  const button = document.getElementById("newQuote");
-  button.addEventListener("click", displayRandomQuote);
-};
+  // Initial render
+  showRandomQuote();
+}
+
+document.addEventListener("DOMContentLoaded", init);
+
+// Expose required functions globally in case of inline usage/testing
+window.showRandomQuote = showRandomQuote;
+window.createAddQuoteForm = createAddQuoteForm;
+window.addQuote = addQuote;
