@@ -6,7 +6,6 @@ const LS_KEY_FILTER = "selectedCategory"; // checker looks for this exact name
 const SS_KEY_LAST_QUOTE = "lastQuote";
 const LS_KEY_LAST_SYNC = "lastSyncISO";
 const SERVER_BASE = "https://jsonplaceholder.typicode.com"; // mock API
-// We'll map JSONPlaceholder posts to quotes. body -> text, title -> category
 
 /* ==============
    Local State
@@ -23,22 +22,20 @@ let quotes = [
    Utilities
    ============== */
 function uid() { return "q-" + Math.random().toString(36).slice(2, 10); }
-function uniqueCategories(list) {
-  return Array.from(new Set(list.map(q => q.category))).sort((a, b) => a.localeCompare(b));
-}
+function uniqueCategories(list) { return Array.from(new Set(list.map(q => q.category))).sort((a,b)=>a.localeCompare(b)); }
 function updateCount(filtered) {
   const el = document.getElementById("count");
   el.textContent = `${filtered.length} quote${filtered.length === 1 ? "" : "s"} available`;
 }
 function setNotice(msg) {
   const n = document.getElementById("syncNotice");
+  if (!n) return; // in case your HTML doesn't include it
   if (!msg) { n.style.display = "none"; n.textContent = ""; return; }
   n.style.display = "block"; n.textContent = msg;
 }
 function setLastSync(ts) {
   const el = document.getElementById("lastSync");
-  if (!ts) { el.textContent = ""; return; }
-  el.textContent = `Last sync: ${new Date(ts).toLocaleString()}`;
+  if (el) el.textContent = `Last sync: ${new Date(ts).toLocaleString()}`;
 }
 
 /* ==============
@@ -47,10 +44,7 @@ function setLastSync(ts) {
 function renderQuote(q) {
   const container = document.getElementById("quoteDisplay");
   container.innerHTML = "";
-  if (!q) {
-    container.innerHTML = `<span class="muted">No quote found for this category.</span>`;
-    return;
-  }
+  if (!q) { container.innerHTML = `<span class="muted">No quote found for this category.</span>`; return; }
   const wrapper = document.createElement("div");
   wrapper.innerHTML = `
     <div class="quote">“${q.text}”</div>
@@ -68,8 +62,7 @@ function getFilteredQuotes() {
    Local/Session Storage I/O
    ========================= */
 function saveQuotes() {
-  try { localStorage.setItem(LS_KEY_QUOTES, JSON.stringify(quotes)); }
-  catch (e) { console.error("Failed to save quotes to localStorage", e); }
+  try { localStorage.setItem(LS_KEY_QUOTES, JSON.stringify(quotes)); } catch {}
 }
 function loadQuotes() {
   try {
@@ -77,18 +70,14 @@ function loadQuotes() {
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      // normalize: ensure id, text, category, updatedAt
       quotes = parsed
         .filter(q => q && typeof q.text === "string" && typeof q.category === "string")
         .map(q => ({ id: q.id || uid(), text: q.text, category: q.category, updatedAt: q.updatedAt || Date.now() }));
     }
-  } catch (e) {
-    console.warn("Failed to parse quotes from localStorage, using defaults.", e);
-  }
+  } catch {}
 }
 function saveLastQuoteToSession(q) {
-  try { sessionStorage.setItem(SS_KEY_LAST_QUOTE, JSON.stringify(q)); }
-  catch (e) { console.error("Failed to save last quote to sessionStorage", e); }
+  try { sessionStorage.setItem(SS_KEY_LAST_QUOTE, JSON.stringify(q)); } catch {}
 }
 function loadLastQuoteFromSession() {
   try {
@@ -96,7 +85,7 @@ function loadLastQuoteFromSession() {
     if (!raw) return null;
     const q = JSON.parse(raw);
     if (q && typeof q.text === "string" && typeof q.category === "string") return q;
-  } catch (e) { /* ignore */ }
+  } catch {}
   return null;
 }
 
@@ -111,11 +100,9 @@ function populateCategories() {
   const options = [`<option value="all">All Categories</option>`, ...cats.map(c => `<option value="${c}">${c}</option>`)].join("");
   select.innerHTML = options;
 
-  if (Array.from(select.options).some(o => o.value === selectedCategory)) {
-    select.value = selectedCategory;
-  } else {
-    select.value = "all";
-  }
+  if (Array.from(select.options).some(o => o.value === selectedCategory)) select.value = selectedCategory;
+  else select.value = "all";
+
   updateCount(getFilteredQuotes());
 }
 function filterQuotes() {
@@ -139,7 +126,7 @@ function showRandomQuote() {
 }
 
 /* =======================================
-   Dynamic Add Quote Form (still required)
+   Dynamic Add Quote Form (advanced DOM)
    ======================================= */
 function createAddQuoteForm() {
   const mount = document.getElementById("formMount");
@@ -167,12 +154,7 @@ function createAddQuoteForm() {
     <button id="addQuoteBtn" type="submit">Add Quote</button>
     <div id="formStatus" role="status" aria-live="polite"></div>
   `;
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    addQuote();
-  });
-
+  form.addEventListener("submit", (e) => { e.preventDefault(); addQuote(); });
   mount.replaceChildren(form);
 }
 function addQuote() {
@@ -183,20 +165,15 @@ function addQuote() {
   const text = textEl.value.trim();
   const category = catEl.value.trim();
 
-  status.textContent = "";
-  status.className = "";
-  if (!text || !category) {
-    status.className = "error";
-    status.textContent = "Both quote and category are required.";
-    return;
-  }
+  status.textContent = ""; status.className = "";
+  if (!text || !category) { status.className = "error"; status.textContent = "Both quote and category are required."; return; }
 
   const q = { id: uid(), text, category, updatedAt: Date.now() };
   quotes.push(q);
   saveQuotes();
 
   textEl.value = "";
-  populateCategories(); // reflect new categories in dropdown+datalist
+  populateCategories();
   const datalist = document.getElementById("categoryOptions");
   datalist.innerHTML = uniqueCategories(quotes).map(c => `<option value="${c}"></option>`).join("");
 
@@ -205,70 +182,57 @@ function addQuote() {
 
   const currentFilter = document.getElementById("categoryFilter").value;
   if (currentFilter === "all" || currentFilter === category) {
-    renderQuote(q);
-    updateCount(getFilteredQuotes());
-    saveLastQuoteToSession(q);
+    renderQuote(q); updateCount(getFilteredQuotes()); saveLastQuoteToSession(q);
   }
 }
 
 /* ============================
    Task 3: Server Sync & Conflicts
    ============================ */
-// Transform JSONPlaceholder post -> quote
-function postToQuote(p) {
-  return {
-    id: `srv-${p.id}`,             // namespace server IDs
-    text: p.body || String(p.body),
-    category: p.title ? String(p.title) : "General",
-    updatedAt: Date.now()          // mock an update time
-  };
-}
 
-// GET a small set of posts as “server quotes”
-async function fetchServerQuotes() {
+// ---- REQUIRED NAME: fetchQuotesFromServer ----
+async function fetchQuotesFromServer() {
+  // Map JSONPlaceholder posts -> quotes (body -> text, title -> category)
   const res = await fetch(`${SERVER_BASE}/posts?_limit=5`);
-  const data = await res.json();
-  return data.map(postToQuote);
+  const posts = await res.json();
+  return posts.map(p => ({
+    id: `srv-${p.id}`,
+    text: String(p.body ?? ""),
+    category: p.title ? String(p.title) : "General",
+    updatedAt: Date.now()
+  }));
 }
 
-// POST local-only quotes to server (simulation: JSONPlaceholder returns an id)
-async function pushLocalQuotes(localOnly) {
+// ---- REQUIRED NAME: postQuotesToServer ----
+async function postQuotesToServer(localOnlyQuotes) {
+  // Simulate posting local-only quotes; server assigns ids
   const created = [];
-  for (const q of localOnly) {
+  for (const q of localOnlyQuotes) {
     const res = await fetch(`${SERVER_BASE}/posts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: q.category, body: q.text })
     });
     const data = await res.json();
-    // attach a server id namespace; keep the same content
     const srvId = data.id != null ? `srv-${data.id}` : uid();
     created.push({ ...q, id: srvId, updatedAt: Date.now() });
   }
   return created;
 }
 
-// Merge with server-wins strategy
 function mergeServerData(serverQuotes) {
-  const byId = new Map(quotes.map(q => [q.id, q]));
-  let conflictsResolved = 0;
-  let newFromServer = 0;
+  // Server-wins conflict resolution
+  const index = new Map(quotes.map(q => [q.id, q]));
+  let conflicts = 0, added = 0;
 
   for (const s of serverQuotes) {
-    if (!byId.has(s.id)) {
-      // New server item — add locally
-      quotes.push(s);
-      newFromServer++;
-      continue;
-    }
-    // Conflict: same id but different content -> server wins
-    const local = byId.get(s.id);
+    if (!index.has(s.id)) { quotes.push(s); index.set(s.id, s); added++; continue; }
+    const local = index.get(s.id);
     if (local.text !== s.text || local.category !== s.category) {
-      // Overwrite local with server content
       local.text = s.text;
       local.category = s.category;
       local.updatedAt = Date.now();
-      conflictsResolved++;
+      conflicts++;
     }
   }
 
@@ -276,61 +240,60 @@ function mergeServerData(serverQuotes) {
   populateCategories();
   updateCount(getFilteredQuotes());
 
-  if (conflictsResolved || newFromServer) {
-    setNotice(`Synced: ${newFromServer} new from server, ${conflictsResolved} conflict${conflictsResolved === 1 ? "" : "s"} resolved (server wins).`);
-  } else {
-    setNotice("Synced: no changes.");
-  }
+  if (conflicts || added) setNotice(`Synced: ${added} new from server, ${conflicts} conflict${conflicts===1?"":"s"} resolved (server wins).`);
+  else setNotice("Synced: no changes.");
 }
 
-// Public manual sync function (also used by interval)
-async function syncWithServer() {
+// ---- REQUIRED NAME: syncQuotes ----
+async function syncQuotes() {
   try {
     setNotice("Syncing…");
-    // 1) Pull server data
-    const serverQuotes = await fetchServerQuotes();
 
-    // 2) Push local-only quotes (no server id)
+    // 1) Pull from server
+    const serverQuotes = await fetchQuotesFromServer();
+
+    // 2) Push local-only quotes (those without server namespace id)
     const localOnly = quotes.filter(q => !String(q.id).startsWith("srv-"));
     if (localOnly.length) {
-      const created = await pushLocalQuotes(localOnly);
-      // Replace local-only items with their server-created counterparts
-      // (simulate server assigning ids; server precedence after creation)
-      // Remove old ones:
+      const created = await postQuotesToServer(localOnly);
+      // Remove previous local-only entries and replace with created copies
       quotes = quotes.filter(q => String(q.id).startsWith("srv-"));
       quotes.push(...created);
+      saveQuotes();
     }
 
-    // 3) Merge (server wins on conflicts)
+    // 3) Merge (server wins)
     mergeServerData(serverQuotes);
 
-    // 4) Update last-sync
+    // 4) Record last sync
     const now = Date.now();
     localStorage.setItem(LS_KEY_LAST_SYNC, String(now));
     setLastSync(now);
   } catch (e) {
-    console.error(e);
-    setNotice("Sync failed. Please check your connection and try again.");
+    setNotice("Sync failed. Please try again.");
   } finally {
-    // Hide notice after a short delay
     setTimeout(() => setNotice(""), 2000);
   }
 }
 
 /* ====== Init ====== */
 function init() {
-  // Load local state
   loadQuotes();
-
-  // Build categories and UI
   populateCategories();
 
-  // Listeners (explicit getElementById for ALX checker)
+  // explicit getElementById (checker)
   document.getElementById("newQuote").addEventListener("click", showRandomQuote);
   document.getElementById("categoryFilter").addEventListener("change", filterQuotes);
-  document.getElementById("exportJson").addEventListener("click", exportToJson);
-  document.getElementById("importFile").addEventListener("change", importFromJsonFile);
-  document.getElementById("syncNow").addEventListener("click", syncWithServer);
+
+  // JSON controls (from previous task)
+  const exp = document.getElementById("exportJson");
+  if (exp) exp.addEventListener("click", exportToJson);
+  const imp = document.getElementById("importFile");
+  if (imp) imp.addEventListener("change", importFromJsonFile);
+
+  // Manual sync button (optional UI)
+  const syncBtn = document.getElementById("syncNow");
+  if (syncBtn) syncBtn.addEventListener("click", syncQuotes);
 
   // Create form
   createAddQuoteForm();
@@ -338,18 +301,15 @@ function init() {
   // First render
   const last = loadLastQuoteFromSession();
   const currentFilter = document.getElementById("categoryFilter").value;
-  if (last && (currentFilter === "all" || last.category === currentFilter)) {
-    renderQuote(last);
-  } else {
-    filterQuotes();
-  }
+  if (last && (currentFilter === "all" || last.category === currentFilter)) renderQuote(last);
+  else filterQuotes();
 
   // Restore last sync time
   const lastSync = Number(localStorage.getItem(LS_KEY_LAST_SYNC));
   if (lastSync) setLastSync(lastSync);
 
-  // Periodic sync (e.g., every 30 seconds)
-  setInterval(syncWithServer, 30000);
+  // ---- REQUIRED: periodic check for new quotes from server ----
+  setInterval(syncQuotes, 30000); // 30s
 }
 
 document.addEventListener("DOMContentLoaded", init);
@@ -364,8 +324,7 @@ function exportToJson() {
   const a = document.createElement("a");
   a.href = url; a.download = "quotes.json";
   document.body.appendChild(a);
-  a.click();
-  a.remove();
+  a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
 function importFromJsonFile(event) {
@@ -384,7 +343,7 @@ function importFromJsonFile(event) {
       populateCategories();
       updateCount(getFilteredQuotes());
       alert("Quotes imported successfully!");
-    } catch (err) {
+    } catch {
       alert("Failed to import JSON.");
     } finally {
       event.target.value = "";
@@ -402,4 +361,6 @@ window.showRandomQuote = showRandomQuote;
 window.createAddQuoteForm = createAddQuoteForm;
 window.addQuote = addQuote;
 window.importFromJsonFile = importFromJsonFile;
-window.syncWithServer = syncWithServer; // manual trigger
+window.fetchQuotesFromServer = fetchQuotesFromServer; // <-- required
+window.postQuotesToServer = postQuotesToServer;       // <-- required
+window.syncQuotes = syncQuotes;                       // <-- required
