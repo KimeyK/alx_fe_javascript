@@ -8,28 +8,31 @@
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Arial; margin: 2rem; line-height: 1.5; }
     h1 { margin-bottom: 0.25rem; }
     .muted { color: #666; }
-    .controls, .storage-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+    .controls, .storage-controls, .sync-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
     #quoteDisplay { padding: 1rem 1.25rem; border: 1px solid #ddd; border-radius: 10px; min-height: 60px; background: #fafafa; }
     .quote { font-size: 1.1rem; }
     .category-pill { display: inline-block; margin-top: 0.25rem; padding: 0.15rem 0.5rem; border-radius: 999px; border: 1px solid #ccc; font-size: 0.8rem; }
-    form { display: grid; gap: 0.5rem; max-width: 520px; margin-top: 1rem; }
+    form { display: grid; gap: 0.5rem; max-width: 560px; margin-top: 1rem; }
     input, select, button { padding: 0.5rem; border: 1px solid #ccc; border-radius: 8px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
     .success { color: #0b6b2b; }
     .error { color: #a40000; }
+    .notice { padding: 0.5rem 0.75rem; border-radius: 8px; background: #f5f9ff; border: 1px solid #dbe7ff; color: #123; }
     .sr-only { position: absolute; width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+    a.tweet { text-decoration: none; }
   </style>
 </head>
 <body>
   <h1>Dynamic Quote Generator</h1>
-  <p class="muted">Filter by category, show a new quote, add your own. Filter preference persists via Local Storage; last viewed quote uses Session Storage.</p>
+  <p class="muted">Filter by category, show a new quote, add your own. Filter preference persists via Local Storage; last viewed quote uses Session Storage. Now with server sync + conflict resolution.</p>
+
+  <div id="syncNotice" class="notice" role="status" aria-live="polite" style="display:none;"></div>
 
   <div class="controls">
     <label for="categoryFilter" class="sr-only">Filter by category</label>
-    <!-- Per task: inline onchange attribute -->
+    <!-- Per task: inline onchange also supported -->
     <select id="categoryFilter" onchange="filterQuotes()">
       <option value="all">All Categories</option>
-      <!-- Dynamically populated categories -->
     </select>
 
     <button id="newQuote" type="button">Show New Quote</button>
@@ -44,8 +47,23 @@
     <input type="file" id="importFile" accept=".json" />
   </div>
 
+  <div class="sync-controls">
+    <button id="syncNow" type="button">Sync Now</button>
+    <span id="lastSync" class="muted"></span>
+  </div>
+
   <!-- The Add Quote form is created dynamically by JS -->
   <div id="formMount"></div>
+
+  <p>
+    <a
+      id="tweetLink"
+      class="tweet"
+      target="_blank"
+      rel="noopener"
+      href="https://twitter.com/intent/tweet?text=I%20just%20built%20a%20DOM%20+%20Web%20Storage%20+%20JSON%20app%20with%20server%20sync%20and%20conflict%20resolution!%20%23ALX%20%23JavaScript"
+    >Click here to Tweet this 🎉</a>
+  </p>
 
   <script src="script.js"></script>
 </body>
